@@ -62,12 +62,12 @@
     let focusZones = [];
     let permanentZones = [];
     let dots = [];
-//-----------------------------------------------------
+
     const spacing = 60;
-    const dotDeblurRatio = 11/24;
+    const dotDeblurRatio = 5 / 12;
     const overallBlur = 30;
     const tiltThreshold = 5;
-//-----------------------------------------------------
+
     let tiltX = 0;
     let tiltY = 0;
 
@@ -97,12 +97,11 @@ originally aired from 1977 to 1983 on NBC.
 
 PaCHiPs, designed to tantalizingly reveal the handsome and rugged looks
 of two LA boys - one from West Covina, the other Echo Park - 
-was released in 1982, just missing out on the show's momentum.
+was released in 1982, thus missing out on the show's momentum.
 
 The poor timing of Pac‑Man’s PaCHiPs (and later E.T. the Extra‑Terrestrial)
-destroyed consumer trust.
-
-Retailers slashed prices, warehouses filled with unsold stock, Atari posted massive losses.
+destroyed consumer trust, retailers slashed prices, 
+warehouses filled with unsold stock, Atari posted massive losses.
 
 By 1983, the company’s reputation was in tatters,
 the wider market collapsed under the weight of too many consoles and low‑quality games.
@@ -175,6 +174,10 @@ marking the collapse of the studio that had defined the early console era.`;
         pacman.x += xSpeed;
         pacman.y += ySpeed;
 
+        // ✅ Keep Pac-Man inside the screen
+        pacman.x = Math.max(pacman.size, Math.min(canvas.width - pacman.size, pacman.x));
+        pacman.y = Math.max(pacman.size, Math.min(canvas.height - pacman.size, pacman.y));
+
         if (xSpeed > 0) pacman.direction = "right";
         else if (xSpeed < 0) pacman.direction = "left";
         else if (ySpeed > 0) pacman.direction = "down";
@@ -192,47 +195,46 @@ marking the collapse of the studio that had defined the early console era.`;
         drawPacman();
       }
 
- if (showHistory) {
-  const elapsed = now - historyStartTime;
-  let alpha = 1;
+      if (showHistory) {
+        const elapsed = now - historyStartTime;
+        let alpha = 1;
 
-  if (elapsed > 28000) {
-    showHistory = false;
-    gameOver = true;
-  } else if (elapsed > 26000) {
-    alpha = 1 - (elapsed - 26000) / 2000; // fade last 2 seconds
-  }
+        if (elapsed > 20000) {
+          showHistory = false;
+          gameOver = true;
+        } else if (elapsed > 18000) {
+          alpha = 1 - (elapsed - 18000) / 2000;
+        }
 
-  // ✅ Background panel behind text
-  ctx.save();
-  ctx.globalAlpha = alpha * 0.7;   // panel fades with text
-  ctx.fillStyle = "white";         // panel color
-  ctx.fillRect(
-    canvas.width * 0.1,
-    canvas.height * 0.18,
-    canvas.width * 0.8,
-    canvas.height * 0.65
-  );
-  ctx.restore();
+        // ✅ Full-width translucent background panel
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.7;
+        ctx.fillStyle = "white";
+        ctx.fillRect(
+          0,
+          canvas.height * 0.18,
+          canvas.width,
+          canvas.height * 0.65
+        );
+        ctx.restore();
 
-  // ✅ Draw the text in black
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = "black";         // ← TEXT COLOR HERE
-  ctx.font = "24px Arial";
-  ctx.textAlign = "center";
+        // ✅ Black text
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = "black";
+        ctx.font = "24px Arial";
+        ctx.textAlign = "center";
 
-  const lines = historyText.split("\n");
-  let y = canvas.height / 4;
+        const lines = historyText.split("\n");
+        let y = canvas.height / 4;
 
-  lines.forEach(line => {
-    ctx.fillText(line, canvas.width / 2, y);
-    y += 30;
-  });
+        lines.forEach(line => {
+          ctx.fillText(line, canvas.width / 2, y);
+          y += 30;
+        });
 
-  ctx.restore();
-}
-
+        ctx.restore();
+      }
 
       if (gameOver && !showHistory) {
         ctx.fillStyle = "red";
@@ -287,6 +289,10 @@ marking the collapse of the studio that had defined the early console era.`;
         default: return;
       }
 
+      // ✅ Keep Pac-Man inside bounds
+      pacman.x = Math.max(pacman.size, Math.min(canvas.width - pacman.size, pacman.x));
+      pacman.y = Math.max(pacman.size, Math.min(canvas.height - pacman.size, pacman.y));
+
       focusZones.push({
         x: pacman.x,
         y: pacman.y,
@@ -298,8 +304,10 @@ marking the collapse of the studio that had defined the early console era.`;
     function enableTiltControls() {
       window.addEventListener("deviceorientation", e => {
         if (gameOver || showHistory) return;
-        tiltX = e.gamma || 0;
-        tiltY = e.beta || 0;
+
+        // ✅ Landscape orientation mapping
+        tiltX = (e.beta || 0);     // left/right tilt
+        tiltY = -(e.gamma || 0);   // forward/back tilt
       });
     }
 
@@ -325,4 +333,5 @@ marking the collapse of the studio that had defined the early console era.`;
   </script>
 </body>
 </html>
+
 
