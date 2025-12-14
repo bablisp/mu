@@ -17,15 +17,22 @@
       border-radius: 10px;
       cursor: pointer;
       z-index: 10;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
+
   <audio id="music">
     <source src="chips.mp3" type="audio/mpeg">
   </audio>
-  <button id="startButton">Push here to start. <br>Use arrow keys or tilt phone to move. <br> No copyright. No rights reserved. </button>
+
+  <button id="startButton">
+    Push here to start.<br>
+    Use arrow keys or tilt phone to move.<br>
+    No copyright. No rights reserved.
+  </button>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -39,91 +46,129 @@
     const music = document.getElementById("music");
     let musicStarted = false;
     let gameOver = false;
+    let showHistory = false;
+    let historyStartTime = null;
 
-    const pacman = { x: canvas.width/2, y: canvas.height/2, size:25, speed:5,
-                     direction:"right", mouthOpen:true, mouthTimer:0 };
+    const pacman = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      size: 25,
+      speed: 5,
+      direction: "right",
+      mouthOpen: true,
+      mouthTimer: 0
+    };
 
     let focusZones = [];
     let permanentZones = [];
     let dots = [];
-
+//-----------------------------------------------------
     const spacing = 60;
-    const dotDeblurRatio = 5/12;
+    const dotDeblurRatio = 11/24;
     const overallBlur = 30;
     const tiltThreshold = 5;
+//-----------------------------------------------------
+    let tiltX = 0;
+    let tiltY = 0;
 
-    let tiltX = 0, tiltY = 0;
-
-    for (let x=spacing; x<canvas.width; x+=spacing) {
-      for (let y=spacing; y<canvas.height; y+=spacing) {
-        dots.push({x,y,eaten:false});
+    for (let x = spacing; x < canvas.width; x += spacing) {
+      for (let y = spacing; y < canvas.height; y += spacing) {
+        dots.push({ x, y, eaten: false });
       }
     }
 
     bgImage.onload = () => {
       ctx.filter = `blur(${overallBlur}px)`;
-      ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+      ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
       ctx.filter = "none";
-      requestAnimationFrame(gameLoop);
     };
 
-    // Stop game when audio ends
     music.addEventListener("ended", () => {
-      gameOver = true;
+      showHistory = true;
+      historyStartTime = Date.now();
     });
 
+    const historyText =
+`Pac‑Man made its debut in 1980 — Namco released it in Japan in May of that year,
+and it quickly spread worldwide, becoming one of the most iconic arcade games ever.
+
+The TV show CHiPs, about California Highway Patrol officers Ponch and Jon,
+originally aired from 1977 to 1983 on NBC.
+
+PaCHiPs, designed to tantalizingly reveal the handsome and rugged looks
+of two LA boys - one from West Covina, the other Echo Park - 
+was released in 1982, thus missing out on the show's momentum.
+
+The poor timing of Pac‑Man’s PaCHiPs (and later E.T. the Extra‑Terrestrial)
+destroyed consumer trust.
+
+Retailers slashed prices, warehouses filled with unsold stock, Atari posted massive losses.
+
+By 1983, the company’s reputation was in tatters,
+the wider market collapsed under the weight of too many consoles and low‑quality games.
+
+Atari, once the fastest growing company in the U.S., 
+was split and sold off by its parent Warner Communications in 1984,
+marking the collapse of the studio that had defined the early console era.`;
+
     function gameLoop() {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
       ctx.filter = `blur(${overallBlur}px)`;
-      ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+      ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
       ctx.filter = "none";
 
       const now = Date.now();
 
-      permanentZones.forEach(zone=>{
+      permanentZones.forEach(zone => {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(zone.x,zone.y,zone.radius,0,Math.PI*2);
+        ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
         ctx.restore();
       });
 
-      focusZones = focusZones.filter(zone=>now-zone.time<3000);
-      focusZones.forEach(zone=>{
-        const fade = 1-(now-zone.time)/3000;
+      focusZones = focusZones.filter(zone => now - zone.time < 3000);
+      focusZones.forEach(zone => {
+        const fade = 1 - (now - zone.time) / 3000;
         ctx.save();
         ctx.globalAlpha = fade;
         ctx.beginPath();
-        ctx.arc(zone.x,zone.y,zone.radius||pacman.size*3,0,Math.PI*2);
+        ctx.arc(zone.x, zone.y, zone.radius || pacman.size * 3, 0, Math.PI * 2);
         ctx.clip();
-        ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
         ctx.restore();
       });
 
-      dots.forEach(dot=>{
-        if(!dot.eaten){
-          ctx.fillStyle="white";
+      dots.forEach(dot => {
+        if (!dot.eaten) {
+          ctx.fillStyle = "white";
           ctx.beginPath();
-          ctx.arc(dot.x,dot.y,5,0,Math.PI*2);
+          ctx.arc(dot.x, dot.y, 5, 0, Math.PI * 2);
           ctx.fill();
         }
       });
 
-      dots.forEach(dot=>{
-        if(!dot.eaten){
-          const dx=pacman.x-dot.x, dy=pacman.y-dot.y;
-          if(Math.sqrt(dx*dx+dy*dy)<pacman.size){
-            dot.eaten=true;
-            permanentZones.push({x:dot.x,y:dot.y,radius:spacing*dotDeblurRatio});
+      dots.forEach(dot => {
+        if (!dot.eaten) {
+          const dx = pacman.x - dot.x;
+          const dy = pacman.y - dot.y;
+          if (Math.sqrt(dx * dx + dy * dy) < pacman.size) {
+            dot.eaten = true;
+            permanentZones.push({
+              x: dot.x,
+              y: dot.y,
+              radius: spacing * dotDeblurRatio
+            });
           }
         }
       });
 
-      if (!gameOver) {
-        // Apply tilt-based movement
+      if (!gameOver && !showHistory) {
         let xSpeed = Math.abs(tiltX) > tiltThreshold ? tiltX / 5 : 0;
         let ySpeed = Math.abs(tiltY) > tiltThreshold ? tiltY / 5 : 0;
+
         xSpeed = Math.max(Math.min(xSpeed, 10), -10);
         ySpeed = Math.max(Math.min(ySpeed, 10), -10);
 
@@ -135,7 +180,6 @@
         else if (ySpeed > 0) pacman.direction = "down";
         else if (ySpeed < 0) pacman.direction = "up";
 
-        // 👇 Add focus zone when tilt moves Pac-Man
         if (xSpeed !== 0 || ySpeed !== 0) {
           focusZones.push({
             x: pacman.x,
@@ -148,78 +192,135 @@
         drawPacman();
       }
 
-      if (gameOver) {
+ if (showHistory) {
+  const elapsed = now - historyStartTime;
+  let alpha = 1;
+
+  if (elapsed > 20000) {
+    showHistory = false;
+    gameOver = true;
+  } else if (elapsed > 18000) {
+    alpha = 1 - (elapsed - 18000) / 2000; // fade last 2 seconds
+  }
+
+  // ✅ Background panel behind text
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.7;   // panel fades with text
+  ctx.fillStyle = "white";         // panel color
+  ctx.fillRect(
+    canvas.width * 0.1,
+    canvas.height * 0.18,
+    canvas.width * 0.8,
+    canvas.height * 0.65
+  );
+  ctx.restore();
+
+  // ✅ Draw the text in black
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "black";         // ← TEXT COLOR HERE
+  ctx.font = "24px Arial";
+  ctx.textAlign = "center";
+
+  const lines = historyText.split("\n");
+  let y = canvas.height / 4;
+
+  lines.forEach(line => {
+    ctx.fillText(line, canvas.width / 2, y);
+    y += 30;
+  });
+
+  ctx.restore();
+}
+
+
+      if (gameOver && !showHistory) {
         ctx.fillStyle = "red";
         ctx.font = "bold 80px Arial";
         ctx.textAlign = "center";
-        ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2);
+        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2);
       }
 
       requestAnimationFrame(gameLoop);
     }
 
-    function drawPacman(){
+    function drawPacman() {
       pacman.mouthTimer++;
-      if(pacman.mouthTimer%10===0) pacman.mouthOpen=!pacman.mouthOpen;
-      ctx.fillStyle="yellow";
+      if (pacman.mouthTimer % 10 === 0) pacman.mouthOpen = !pacman.mouthOpen;
+
+      ctx.fillStyle = "yellow";
       ctx.beginPath();
-      let startAngle,endAngle;
-      if(pacman.mouthOpen){
-        switch(pacman.direction){
-          case "right": startAngle=0.25*Math.PI; endAngle=1.75*Math.PI; break;
-          case "left":  startAngle=1.25*Math.PI; endAngle=2.75*Math.PI; break;
-          case "up":    startAngle=1.75*Math.PI; endAngle=1.25*Math.PI; break;
-          case "down":  startAngle=0.75*Math.PI; endAngle=2.25*Math.PI; break;
+
+      let startAngle, endAngle;
+
+      if (pacman.mouthOpen) {
+        switch (pacman.direction) {
+          case "right": startAngle = 0.25 * Math.PI; endAngle = 1.75 * Math.PI; break;
+          case "left":  startAngle = 1.25 * Math.PI; endAngle = 2.75 * Math.PI; break;
+          case "up":    startAngle = 1.75 * Math.PI; endAngle = 1.25 * Math.PI; break;
+          case "down":  startAngle = 0.75 * Math.PI; endAngle = 2.25 * Math.PI; break;
         }
-      } else { startAngle=0; endAngle=2*Math.PI; }
-      ctx.arc(pacman.x,pacman.y,pacman.size,startAngle,endAngle);
-      ctx.lineTo(pacman.x,pacman.y); ctx.closePath(); ctx.fill();
+      } else {
+        startAngle = 0;
+        endAngle = 2 * Math.PI;
+      }
+
+      ctx.arc(pacman.x, pacman.y, pacman.size, startAngle, endAngle);
+      ctx.lineTo(pacman.x, pacman.y);
+      ctx.closePath();
+      ctx.fill();
     }
 
-    window.addEventListener("keydown",e=>{
-      if (gameOver) return; // block input after game over
-      if(!musicStarted){
-        music.play().catch(err=>console.error("Playback failed:",err));
-        musicStarted=true;
+    window.addEventListener("keydown", e => {
+      if (gameOver || showHistory) return;
+
+      if (!musicStarted) {
+        music.play().catch(() => {});
+        musicStarted = true;
       }
-      switch(e.key){
-        case "ArrowUp": pacman.y-=pacman.speed; pacman.direction="up"; break;
-        case "ArrowDown": pacman.y+=pacman.speed; pacman.direction="down"; break;
-        case "ArrowLeft": pacman.x-=pacman.speed; pacman.direction="left"; break;
-        case "ArrowRight": pacman.x+=pacman.speed; pacman.direction="right"; break;
+
+      switch (e.key) {
+        case "ArrowUp": pacman.y -= pacman.speed; pacman.direction = "up"; break;
+        case "ArrowDown": pacman.y += pacman.speed; pacman.direction = "down"; break;
+        case "ArrowLeft": pacman.x -= pacman.speed; pacman.direction = "left"; break;
+        case "ArrowRight": pacman.x += pacman.speed; pacman.direction = "right"; break;
+        default: return;
       }
-      focusZones.push({x:pacman.x,y:pacman.y,time:Date.now(),radius:pacman.size*3});
+
+      focusZones.push({
+        x: pacman.x,
+        y: pacman.y,
+        time: Date.now(),
+        radius: pacman.size * 3
+      });
     });
 
-    function enableTiltControls(){
-      window.addEventListener("deviceorientation",e=>{
-        if (gameOver) return; // block tilt after game over
+    function enableTiltControls() {
+      window.addEventListener("deviceorientation", e => {
+        if (gameOver || showHistory) return;
         tiltX = e.gamma || 0;
         tiltY = e.beta || 0;
       });
     }
 
-    document.getElementById("startButton").addEventListener("click",async()=>{
+    document.getElementById("startButton").addEventListener("click", async () => {
       try {
         await music.play();
         musicStarted = true;
-      } catch(err) {
-        console.error("Playback failed:", err);
+      } catch {}
+
+      if (typeof DeviceOrientationEvent !== "undefined" &&
+          typeof DeviceOrientationEvent.requestPermission === "function") {
+        try {
+          const response = await DeviceOrientationEvent.requestPermission();
+          if (response === "granted") enableTiltControls();
+        } catch {}
+      } else if (/Mobi|Android/i.test(navigator.userAgent)) {
+        enableTiltControls();
       }
 
-      if(typeof DeviceOrientationEvent!=="undefined" &&
-         typeof DeviceOrientationEvent.requestPermission==="function"){
-        try{
-          const response=await DeviceOrientationEvent.requestPermission();
-          if(response==="granted"){ enableTiltControls(); }
-          else{ alert("Motion permission denied. Tilt controls will not work."); }
-        }catch(err){ console.error(err); }
-      } else if(/Mobi|Android/i.test(navigator.userAgent)){
-        enableTiltControls();
-      } else {
-        focusZones.push({x:pacman.x,y:pacman.y,time:Date.now(),radius:pacman.size*3});
-      }
-      document.getElementById("startButton").style.display="none";
+      document.getElementById("startButton").style.display = "none";
+      requestAnimationFrame(gameLoop);
     });
   </script>
 </body>
