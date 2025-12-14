@@ -22,10 +22,10 @@
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
-  <audio id="music" loop>
+  <audio id="music">
     <source src="chips.mp3" type="audio/mpeg">
   </audio>
-  <button id="startButton">Tap to Start</button>
+  <button id="startButton">Push here to start. Use arrow keys or tilt phone to move.</button>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -38,6 +38,7 @@
 
     const music = document.getElementById("music");
     let musicStarted = false;
+    let gameOver = false;
 
     const pacman = { x: canvas.width/2, y: canvas.height/2, size:25, speed:5,
                      direction:"right", mouthOpen:true, mouthTimer:0 };
@@ -51,6 +52,8 @@
     const overallBlur = 30;
     const tiltThreshold = 5;
 
+    let tiltX = 0, tiltY = 0;
+
     for (let x=spacing; x<canvas.width; x+=spacing) {
       for (let y=spacing; y<canvas.height; y+=spacing) {
         dots.push({x,y,eaten:false});
@@ -58,13 +61,16 @@
     }
 
     bgImage.onload = () => {
-      // Draw background once immediately
       ctx.filter = `blur(${overallBlur}px)`;
       ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
       ctx.filter = "none";
-      // Start loop
       requestAnimationFrame(gameLoop);
     };
+
+    // Stop game when audio ends
+    music.addEventListener("ended", () => {
+      gameOver = true;
+    });
 
     function gameLoop() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -114,7 +120,31 @@
         }
       });
 
-      drawPacman();
+      if (!gameOver) {
+        // Apply tilt-based movement
+        let xSpeed = Math.abs(tiltX) > tiltThreshold ? tiltX / 5 : 0;
+        let ySpeed = Math.abs(tiltY) > tiltThreshold ? tiltY / 5 : 0;
+        xSpeed = Math.max(Math.min(xSpeed, 10), -10);
+        ySpeed = Math.max(Math.min(ySpeed, 10), -10);
+
+        pacman.x += xSpeed;
+        pacman.y += ySpeed;
+
+        if (xSpeed > 0) pacman.direction = "right";
+        else if (xSpeed < 0) pacman.direction = "left";
+        else if (ySpeed > 0) pacman.direction = "down";
+        else if (ySpeed < 0) pacman.direction = "up";
+
+        drawPacman();
+      }
+
+      if (gameOver) {
+        ctx.fillStyle = "red";
+        ctx.font = "bold 80px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2);
+      }
+
       requestAnimationFrame(gameLoop);
     }
 
@@ -137,6 +167,7 @@
     }
 
     window.addEventListener("keydown",e=>{
+      if (gameOver) return; // block input after game over
       if(!musicStarted){ music.play(); musicStarted=true; }
       switch(e.key){
         case "ArrowUp": pacman.y-=pacman.speed; pacman.direction="up"; break;
@@ -149,12 +180,9 @@
 
     function enableTiltControls(){
       window.addEventListener("deviceorientation",e=>{
-        if(!musicStarted){ music.play(); musicStarted=true; }
-        if(e.gamma>tiltThreshold){ pacman.x+=pacman.speed; pacman.direction="right"; }
-        else if(e.gamma<-tiltThreshold){ pacman.x-=pacman.speed; pacman.direction="left"; }
-        if(e.beta>tiltThreshold){ pacman.y+=pacman.speed; pacman.direction="down"; }
-        else if(e.beta<-tiltThreshold){ pacman.y-=pacman.speed; pacman.direction="up"; }
-        focusZones.push({x:pacman.x,y:pacman.y,time:Date.now(),radius:pacman.size*3});
+        if (gameOver) return; // block tilt after game over
+        tiltX = e.gamma || 0;
+        tiltY = e.beta || 0;
       });
     }
 
@@ -169,7 +197,6 @@
       } else if(/Mobi|Android/i.test(navigator.userAgent)){
         enableTiltControls();
       } else {
-        // Desktop fallback
         if(!musicStarted){ music.play(); musicStarted=true; }
         focusZones.push({x:pacman.x,y:pacman.y,time:Date.now(),radius:pacman.size*3});
       }
@@ -177,5 +204,4 @@
     });
   </script>
 </body>
-
 </html>
