@@ -97,7 +97,7 @@ originally aired from 1977 to 1983 on NBC.
 
 PaCHiPs, designed to tantalizingly reveal the handsome and rugged looks
 of two LA boys - one from West Covina, the other Echo Park - 
-was released in 1982, thus missing out on the show's momentum.
+was released in 1982, just missing out on the show's momentum.
 
 The poor timing of Pac‑Man’s PaCHiPs (and later E.T. the Extra‑Terrestrial)
 destroyed consumer trust.
@@ -196,11 +196,11 @@ marking the collapse of the studio that had defined the early console era.`;
   const elapsed = now - historyStartTime;
   let alpha = 1;
 
-  if (elapsed > 20000) {
+  if (elapsed > 28000) {
     showHistory = false;
     gameOver = true;
-  } else if (elapsed > 18000) {
-    alpha = 1 - (elapsed - 18000) / 2000; // fade last 2 seconds
+  } else if (elapsed > 26000) {
+    alpha = 1 - (elapsed - 26000) / 2000; // fade last 2 seconds
   }
 
   // ✅ Background panel behind text
@@ -325,3 +325,4 @@ marking the collapse of the studio that had defined the early console era.`;
   </script>
 </body>
 </html>
+
