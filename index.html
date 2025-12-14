@@ -25,9 +25,12 @@
   <audio id="music">
     <source src="chips.mp3" type="audio/mpeg">
   </audio>
-  <button id="startButton">Push here to start. Use arrow keys or tilt phone to move.</button>
+  <button id="startButton"> Push here to start. \n Use arrow keys or tilt phone to move. /n No copyright. No rights reserved </button>
 
   <script>
+
+// no rights reserved, no copyright //
+
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
@@ -168,7 +171,10 @@
 
     window.addEventListener("keydown",e=>{
       if (gameOver) return; // block input after game over
-      if(!musicStarted){ music.play(); musicStarted=true; }
+      if(!musicStarted){
+        music.play().catch(err=>console.error("Playback failed:",err));
+        musicStarted=true;
+      }
       switch(e.key){
         case "ArrowUp": pacman.y-=pacman.speed; pacman.direction="up"; break;
         case "ArrowDown": pacman.y+=pacman.speed; pacman.direction="down"; break;
@@ -187,6 +193,13 @@
     }
 
     document.getElementById("startButton").addEventListener("click",async()=>{
+      try {
+        await music.play();
+        musicStarted = true;
+      } catch(err) {
+        console.error("Playback failed:", err);
+      }
+
       if(typeof DeviceOrientationEvent!=="undefined" &&
          typeof DeviceOrientationEvent.requestPermission==="function"){
         try{
@@ -197,7 +210,6 @@
       } else if(/Mobi|Android/i.test(navigator.userAgent)){
         enableTiltControls();
       } else {
-        if(!musicStarted){ music.play(); musicStarted=true; }
         focusZones.push({x:pacman.x,y:pacman.y,time:Date.now(),radius:pacman.size*3});
       }
       document.getElementById("startButton").style.display="none";
