@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Blur Pacman Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: black; }
+    canvas { display: block; }
+    #startButton {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 40px;
+      font-size: 24px;
+      background: yellow;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <audio id="music" loop>
+    <source src="chips.mp3" type="audio/mpeg">
+  </audio>
+  <button id="startButton">Tap to Start</button>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const bgImage = new Image();
+    bgImage.src = "dople.png";
+
+    const music = document.getElementById("music");
+    let musicStarted = false;
+
+    const pacman = { x: canvas.width/2, y: canvas.height/2, size:25, speed:5,
+                     direction:"right", mouthOpen:true, mouthTimer:0 };
+
+    let focusZones = [];
+    let permanentZones = [];
+    let dots = [];
+
+    const spacing = 60;
+    const dotDeblurRatio = 5/12;
+    const overallBlur = 30;
+    const tiltThreshold = 15;
+
+    for (let x=spacing; x<canvas.width; x+=spacing) {
+      for (let y=spacing; y<canvas.height; y+=spacing) {
+        dots.push({x,y,eaten:false});
+      }
+    }
+
+    bgImage.onload = () => {
+      // Draw background once immediately
+      ctx.filter = `blur(${overallBlur}px)`;
+      ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+      ctx.filter = "none";
+      // Start loop
+      requestAnimationFrame(gameLoop);
+    };
+
+    function gameLoop() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.filter = `blur(${overallBlur}px)`;
+      ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+      ctx.filter = "none";
+
+      const now = Date.now();
+
+      permanentZones.forEach(zone=>{
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(zone.x,zone.y,zone.radius,0,Math.PI*2);
+        ctx.clip();
+        ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+        ctx.restore();
+      });
+
+      focusZones = focusZones.filter(zone=>now-zone.time<3000);
+      focusZones.forEach(zone=>{
+        const fade = 1-(now-zone.time)/3000;
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.beginPath();
+        ctx.arc(zone.x,zone.y,zone.radius||pacman.size*3,0,Math.PI*2);
+        ctx.clip();
+        ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+        ctx.restore();
+      });
+
+      dots.forEach(dot=>{
+        if(!dot.eaten){
+          ctx.fillStyle="white";
+          ctx.beginPath();
+          ctx.arc(dot.x,dot.y,5,0,Math.PI*2);
+          ctx.fill();
+        }
+      });
+
+      dots.forEach(dot=>{
+        if(!dot.eaten){
+          const dx=pacman.x-dot.x, dy=pacman.y-dot.y;
+          if(Math.sqrt(dx*dx+dy*dy)<pacman.size){
+            dot.eaten=true;
+            permanentZones.push({x:dot.x,y:dot.y,radius:spacing*dotDeblurRatio});
+          }
+        }
+      });
+
+      drawPacman();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function drawPacman(){
+      pacman.mouthTimer++;
+      if(pacman.mouthTimer%10===0) pacman.mouthOpen=!pacman.mouthOpen;
+      ctx.fillStyle="yellow";
+      ctx.beginPath();
+      let startAngle,endAngle;
+      if(pacman.mouthOpen){
+        switch(pacman.direction){
+          case "right": startAngle=0.25*Math.PI; endAngle=1.75*Math.PI; break;
+          case "left":  startAngle=1.25*Math.PI; endAngle=2.75*Math.PI; break;
+          case "up":    startAngle=1.75*Math.PI; endAngle=1.25*Math.PI; break;
+          case "down":  startAngle=0.75*Math.PI; endAngle=2.25*Math.PI; break;
+        }
+      } else { startAngle=0; endAngle=2*Math.PI; }
+      ctx.arc(pacman.x,pacman.y,pacman.size,startAngle,endAngle);
+      ctx.lineTo(pacman.x,pacman.y); ctx.closePath(); ctx.fill();
+    }
+
+    window.addEventListener("keydown",e=>{
+      if(!musicStarted){ music.play(); musicStarted=true; }
+      switch(e.key){
+        case "ArrowUp": pacman.y-=pacman.speed; pacman.direction="up"; break;
+        case "ArrowDown": pacman.y+=pacman.speed; pacman.direction="down"; break;
+        case "ArrowLeft": pacman.x-=pacman.speed; pacman.direction="left"; break;
+        case "ArrowRight": pacman.x+=pacman.speed; pacman.direction="right"; break;
+      }
+      focusZones.push({x:pacman.x,y:pacman.y,time:Date.now(),radius:pacman.size*3});
+    });
+
+    function enableTiltControls(){
+      window.addEventListener("deviceorientation",e=>{
+        if(!musicStarted){ music.play(); musicStarted=true; }
+        if(e.gamma>tiltThreshold){ pacman.x+=pacman.speed; pacman.direction="right"; }
+        else if(e.gamma<-tiltThreshold){ pacman.x-=pacman.speed; pacman.direction="left"; }
+        if(e.beta>tiltThreshold){ pacman.y+=pacman.speed; pacman.direction="down"; }
+        else if(e.beta<-tiltThreshold){ pacman.y-=pacman.speed; pacman.direction="up"; }
+        focusZones.push({x:pacman.x,y:pacman.y,time:Date.now(),radius:pacman.size*3});
+      });
+    }
+
+    document.getElementById("startButton").addEventListener("click",async()=>{
+      if(typeof DeviceOrientationEvent!=="undefined" &&
+         typeof DeviceOrientationEvent.requestPermission==="function"){
+        try{
+          const response=await DeviceOrientationEvent.requestPermission();
+          if(response==="granted"){ enableTiltControls(); }
+          else{ alert("Motion permission denied. Tilt controls will not work."); }
+        }catch(err){ console.error(err); }
+      } else if(/Mobi|Android/i.test(navigator.userAgent)){
+        enableTiltControls();
+      } else {
+        // Desktop fallback
+        if(!musicStarted){ music.play(); musicStarted=true; }
+        focusZones.push({x:pacman.x,y:pacman.y,time:Date.now(),radius:pacman.size*3});
+      }
+      document.getElementById("startButton").style.display="none";
+    });
+  </script>
+</body>
+</html>
