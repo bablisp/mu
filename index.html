@@ -25,12 +25,9 @@
   <audio id="music">
     <source src="chips.mp3" type="audio/mpeg">
   </audio>
-  <button id="startButton"> Push here to start. <br> Use arrow keys or tilt phone to move. <br> No copyright. No rights reserved </button>
+  <button id="startButton">Push here to start. <br>Use arrow keys or tilt phone to move. <br> No copyright. No rights reserved. </button>
 
   <script>
-
-// no rights reserved, no copyright //
-
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
@@ -138,6 +135,16 @@
         else if (ySpeed > 0) pacman.direction = "down";
         else if (ySpeed < 0) pacman.direction = "up";
 
+        // 👇 Add focus zone when tilt moves Pac-Man
+        if (xSpeed !== 0 || ySpeed !== 0) {
+          focusZones.push({
+            x: pacman.x,
+            y: pacman.y,
+            time: Date.now(),
+            radius: pacman.size * 3
+          });
+        }
+
         drawPacman();
       }
 
@@ -217,4 +224,3 @@
   </script>
 </body>
 </html>
-
