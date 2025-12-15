@@ -67,7 +67,7 @@
 
     const spacing = 60;
     const dotDeblurRatio = 5 / 12;
-    const overallBlur = 8; // WebGL radius; 8 is already strong visually
+    const overallBlur = 8; // WebGL blur radius (visual strength)
     const tiltThreshold = 5;
 
     let tiltX = 0;
@@ -109,7 +109,6 @@
           vec4 color = vec4(0.0);
           float total = 0.0;
 
-          // radius capped to 10 samples each direction
           float r = min(u_radius, 10.0);
 
           for (float x = -10.0; x <= 10.0; x++) {
@@ -172,6 +171,10 @@
 
       const texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, texture);
+
+      // ✅ Fix: ensure the image is not upside down
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -208,6 +211,7 @@
       };
     }
 
+    // Set up dots
     for (let x = spacing; x < canvas.width; x += spacing) {
       for (let y = spacing; y < canvas.height; y += spacing) {
         dots.push({ x, y, eaten: false });
